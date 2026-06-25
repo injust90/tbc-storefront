@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Storefront Walk</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
@@ -11,6 +11,12 @@
       <p class="hint">W/S front view · A/D slide camera · Space to jump · Shift to run · Drag to orbit</p>
     </div>
     <canvas id="canvas"></canvas>
+    <div id="mobile-controls">
+      <div id="joystick-zone">
+        <div id="joystick-knob"></div>
+      </div>
+      <button id="jump-btn" type="button" aria-label="Jump">Jump</button>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

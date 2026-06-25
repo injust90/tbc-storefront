@@ -18,14 +18,14 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87b8d9);
-scene.fog = new THREE.Fog(0x87b8d9, 18, 42);
+scene.background = new THREE.Color(0xb8c4d4);
+scene.fog = new THREE.Fog(0xb8c4d4, 28, 95);
 
 const camera = new THREE.PerspectiveCamera(
   52,
   window.innerWidth / window.innerHeight,
   0.1,
-  100
+  200
 );
 
 const hemi = new THREE.HemisphereLight(0xfff3dd, 0x8ea6b8, 1.1);
@@ -36,14 +36,18 @@ sun.position.set(6, 12, 4);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 30;
-sun.shadow.camera.left = -12;
-sun.shadow.camera.right = 12;
-sun.shadow.camera.top = 12;
-sun.shadow.camera.bottom = -12;
+sun.shadow.camera.far = 80;
+sun.shadow.camera.left = -22;
+sun.shadow.camera.right = 22;
+sun.shadow.camera.top = 22;
+sun.shadow.camera.bottom = -50;
 scene.add(sun);
 
-const input = new Input(canvas);
+const input = new Input(canvas, {
+  joystickZone: document.getElementById('joystick-zone'),
+  joystickKnob: document.getElementById('joystick-knob'),
+  jumpButton: document.getElementById('jump-btn'),
+});
 const cameraRig = new CameraRig(camera);
 
 const clock = new THREE.Clock();
@@ -51,14 +55,11 @@ const clock = new THREE.Clock();
 async function main() {
   hint.textContent = 'Loading…';
 
-  const [player, world] = await Promise.all([
-    Player.create(scene),
-    World.create(scene),
-  ]);
-  player.position.set(0, 0, 8);
+  const player = await Player.create(scene);
+  const world = new World(scene);
+  player.position.set(0, 0, 10);
 
-  hint.textContent =
-    'W/S front view · A/D slide camera · Space to jump · Shift to run · Drag to orbit';
+  hint.textContent = input.getHintText();
 
   function animate() {
     const dt = Math.min(clock.getDelta(), 0.05);

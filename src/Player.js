@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { dampAngle, damp } from './math.js';
+import { dampAngle } from './math.js';
+import { PlayerAnimations } from './PlayerAnimations.js';
 
 export const PLAYER_MODEL_URL = '/models/player.glb';
 
@@ -30,10 +31,9 @@ export class Player {
     this.grounded = true;
     this.facing = Math.PI;
     this.moving = false;
+    this.movingBack = false;
     this.model = null;
-    this.mixer = null;
-    this.walkAction = null;
-    this.animWeight = 0;
+    this.animations = null;
 
     scene.add(this.group);
   }
@@ -68,7 +68,10 @@ export class Player {
     model.rotation.y = MODEL_YAW;
 
     this.model = model;
-    this.setupAnimations(gltf);
+
+    if (gltf.animations.length) {
+      this.animations = new PlayerAnimations(model, gltf.animations);
+    }
   }
 
   fitAndGround(model) {
@@ -80,19 +83,6 @@ export class Player {
     model.updateMatrixWorld(true);
     _box.setFromObject(model);
     model.position.y -= _box.min.y;
-  }
-
-  setupAnimations(gltf) {
-    if (!gltf.animations.length) return;
-
-    this.mixer = new THREE.AnimationMixer(this.model);
-    const clip =
-      gltf.animations.find((a) => /walk|run|move/i.test(a.name)) ??
-      gltf.animations[0];
-
-    this.walkAction = this.mixer.clipAction(clip);
-    this.walkAction.play();
-    this.walkAction.setEffectiveWeight(0);
   }
 
   addPlaceholder() {
@@ -139,6 +129,9 @@ export class Player {
       const speed = MOVE_SPEED * (input.run ? RUN_MULTIPLIER : 1);
       _targetVelocity.copy(_moveDir).multiplyScalar(speed);
 
+      this.movingBack =
+        input.backward && !input.forward && _moveDir.dot(forward) < -0.25;
+
       const walkingStraight =
         (input.forward || input.backward) && !input.left && !input.right;
       const targetFacing = walkingStraight
@@ -147,6 +140,7 @@ export class Player {
       this.facing = dampAngle(this.facing, targetFacing, TURN_SPEED, dt);
     } else {
       _targetVelocity.set(0, 0, 0);
+      this.movingBack = false;
     }
 
     const blend = 1 - Math.exp(-(hasInput ? ACCEL : DECEL) * dt);
@@ -178,16 +172,17 @@ export class Player {
     }
 
     this.position.copy(next);
-    this.updateAnimations(dt);
-  }
 
-  updateAnimations(dt) {
-    if (!this.mixer || !this.walkAction) return;
-
-    const targetWeight = this.moving && this.grounded ? 1 : 0;
-    this.animWeight = damp(this.animWeight, targetWeight, 8, dt);
-    this.walkAction.setEffectiveWeight(this.animWeight);
-    this.mixer.update(dt);
+    this.animations?.update(
+      {
+        hasInput: this.moving,
+        movingBack: this.movingBack,
+        running: input.run,
+        grounded: this.grounded,
+        speed: this.velocity.length(),
+      },
+      dt
+    );
   }
 }
 
