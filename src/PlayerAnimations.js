@@ -3,7 +3,6 @@ import * as THREE from 'three';
 export const CLIP_NAMES = {
   idle: 'Idle_3',
   walk: 'Walking',
-  walkBack: 'Walk_Backward',
   run: 'Running',
 };
 
@@ -18,17 +17,16 @@ export class PlayerAnimations {
     this.currentAction = null;
 
     for (const [state, clipName] of Object.entries(CLIP_NAMES)) {
-      const raw = clips.find((c) => c.name === clipName);
-      if (!raw) {
+      const clip = clips.find((c) => c.name === clipName);
+      if (!clip) {
         console.warn(`[PlayerAnimations] Missing clip: ${clipName}`);
         continue;
       }
 
-      const clip = state === 'walkBack' ? fixWalkBackRootMotion(raw) : raw;
       const action = this.mixer.clipAction(clip);
       action.loop = THREE.LoopRepeat;
       this.actions[state] = action;
-      console.info(`[PlayerAnimations] ${state} → "${raw.name}"`);
+      console.info(`[PlayerAnimations] ${state} → "${clip.name}"`);
     }
 
     this.fadeTo('idle', 0);
@@ -48,15 +46,13 @@ export class PlayerAnimations {
     this.current = state;
   }
 
-  update({ hasInput, movingBack, running, grounded, speed }, dt) {
+  update({ hasInput, running, grounded, speed }, dt) {
     if (!this.mixer) return;
 
     let state = 'idle';
 
     if (grounded) {
-      if (hasInput && movingBack && this.actions.walkBack) {
-        state = 'walkBack';
-      } else if (hasInput && running && this.actions.run) {
+      if (hasInput && running && this.actions.run) {
         state = 'run';
       } else if (hasInput || speed > IDLE_SPEED) {
         state = this.actions.walk ? 'walk' : 'idle';
@@ -75,33 +71,4 @@ export class PlayerAnimations {
 
     this.mixer.update(dt);
   }
-}
-
-/**
- * Walk_Backward bakes ~124 units of Hips Z root motion into the clip.
- * On loop that snaps back to frame 0 — strip horizontal drift, keep Y bob.
- */
-function fixWalkBackRootMotion(clip) {
-  const tracks = clip.tracks.map((track) => {
-    if (track.name !== 'Hips.position') {
-      return track;
-    }
-
-    const values = track.values.slice();
-    const baseX = values[0];
-    const baseZ = values[2];
-
-    for (let i = 0; i < values.length; i += 3) {
-      values[i] = baseX;
-      values[i + 2] = baseZ;
-    }
-
-    return new THREE.VectorKeyframeTrack(
-      track.name,
-      track.times.slice(),
-      values
-    );
-  });
-
-  return new THREE.AnimationClip(clip.name, clip.duration, tracks);
 }

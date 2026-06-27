@@ -22,7 +22,7 @@ scene.background = new THREE.Color(0xb8c4d4);
 scene.fog = new THREE.Fog(0xb8c4d4, 28, 95);
 
 const camera = new THREE.PerspectiveCamera(
-  52,
+  48,
   window.innerWidth / window.innerHeight,
   0.1,
   200
@@ -55,9 +55,12 @@ const clock = new THREE.Clock();
 async function main() {
   hint.textContent = 'Loading…';
 
-  const player = await Player.create(scene);
-  const world = new World(scene);
-  player.position.set(0, 0, 10);
+  const [player, world] = await Promise.all([
+    Player.create(scene),
+    World.create(scene),
+  ]);
+  player.position.set(0, 0, 4);
+  cameraRig.setOccluders(world.root);
 
   hint.textContent = input.getHintText();
 

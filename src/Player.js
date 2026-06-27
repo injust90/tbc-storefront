@@ -8,6 +8,7 @@ export const PLAYER_MODEL_URL = '/models/player.glb';
 const MOVE_SPEED = 4.2;
 const RUN_MULTIPLIER = 1.55;
 const TURN_SPEED = 7;
+const REVERSE_TURN_SPEED = 18;
 const ACCEL = 10;
 const DECEL = 14;
 const JUMP_VELOCITY = 6.2;
@@ -31,7 +32,6 @@ export class Player {
     this.grounded = true;
     this.facing = Math.PI;
     this.moving = false;
-    this.movingBack = false;
     this.model = null;
     this.animations = null;
 
@@ -129,18 +129,27 @@ export class Player {
       const speed = MOVE_SPEED * (input.run ? RUN_MULTIPLIER : 1);
       _targetVelocity.copy(_moveDir).multiplyScalar(speed);
 
-      this.movingBack =
-        input.backward && !input.forward && _moveDir.dot(forward) < -0.25;
+      const camForwardYaw = Math.atan2(forward.x, forward.z);
+      const straightBack =
+        input.backward && !input.forward && !input.left && !input.right;
+      const straightForward =
+        input.forward && !input.backward && !input.left && !input.right;
 
-      const walkingStraight =
-        (input.forward || input.backward) && !input.left && !input.right;
-      const targetFacing = walkingStraight
-        ? Math.atan2(forward.x, forward.z)
-        : Math.atan2(_moveDir.x, _moveDir.z);
-      this.facing = dampAngle(this.facing, targetFacing, TURN_SPEED, dt);
+      let targetFacing;
+      let turnSpeed = TURN_SPEED;
+
+      if (straightBack) {
+        targetFacing = camForwardYaw + Math.PI;
+        turnSpeed = REVERSE_TURN_SPEED;
+      } else if (straightForward) {
+        targetFacing = camForwardYaw;
+      } else {
+        targetFacing = Math.atan2(_moveDir.x, _moveDir.z);
+      }
+
+      this.facing = dampAngle(this.facing, targetFacing, turnSpeed, dt);
     } else {
       _targetVelocity.set(0, 0, 0);
-      this.movingBack = false;
     }
 
     const blend = 1 - Math.exp(-(hasInput ? ACCEL : DECEL) * dt);
@@ -176,7 +185,6 @@ export class Player {
     this.animations?.update(
       {
         hasInput: this.moving,
-        movingBack: this.movingBack,
         running: input.run,
         grounded: this.grounded,
         speed: this.velocity.length(),
